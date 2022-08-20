@@ -3,10 +3,9 @@
 
 import pandas as pd
 from githubdata import GithubData
-from mirutil.funcs import norm_fa_str as norm
-from mirutil.funcs import save_as_prq_wo_index as sprq
 
 repo_url = 'https://github.com/imahdimir/d-Ticker-2-BaseTicker-map'
+btic_repo_url = 'https://github.com/imahdimir/d-uniq-BaseTickers'
 
 btic = 'BaseTicker'
 tick = 'Ticker'
@@ -21,21 +20,35 @@ def main() :
   map_repo.clone_overwrite_last_version()
   ##
   fpn = map_repo.data_fps[0]
-  ##
   df = pd.read_parquet(fpn)
+  df = df.reset_index()
   ##
   df = df[[tick, btic]]
   ##
-  df = df.applymap(norm)
-  ##
   df = df.drop_duplicates()
   ##
-  df = df.sort_values(btic)
+  df = df.sort_values([btic, tick])
   ##
-  sprq(df , fpn)
+
+  btic_repo = GithubData(btic_repo_url)
+  btic_repo.clone_overwrite_last_version()
   ##
-  map_repo.commit_and_push_to_github_data_target('just sort with gov py')
+  bdfpn = btic_repo.data_fps[0]
+  bdf = pd.read_parquet(bdfpn)
+  bdf = bdf.reset_index()
   ##
+  assert df[btic].isin(bdf[btic]).all(), 'some basetickers are not in ref basetickers data'
+  ##
+
+  df = df.set_index(tick)
+  ##
+  df.to_parquet(fpn)
+  ##
+  commit_msg = 'gov'
+  map_repo.commit_and_push_to_github_data_target(commit_msg)
+  ##
+
+  btic_repo.rmdir()
   map_repo.rmdir()
 
   ##
